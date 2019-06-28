@@ -1,0 +1,98 @@
+clear all
+close all;
+%%
+
+%--------------Off-line Gaussian process regression with kown centroid and
+%--------------orientation meassurements-----------------------%
+
+%---------------------Simulation part-------------------------%
+
+N = 10 ; %Number of points for every face of cube ( number of of measurementts : 6 * N)
+z = gen_cube(N) ; %Generation of points from cube
+p = (1/2) * ones(3,1) ; %Centroid
+R = 0.0001 ; %Noise variance
+
+%-------Noisy measurements
+for n = 1 : size(z,2) 
+    r_(n) = sqrt((z(1,n) - p(1))^2 + (z(2,n) - p(2))^2 + (z(3,n) - p(3))^2) ;
+    theta_(n) = atan2((z(2,n) - p(2)), (z(1,n) - p(1))) ; %Azimuth measurement
+    phi_(n) = atan((z(3,n) - p(3))/sqrt(( z(2,n) - p(2))^2 + (z(1,n) - p(1))^2)) ; %Elevation measurement
+    Angle_train(n,:) = [theta_(n), phi_(n)] ; 
+    c{n} = [ cos(phi_(n)) .* cos(theta_(n)) ; cos(phi_(n)) .* sin(theta_(n)) ; sin(phi_(n))] ;%Orientation vector
+    c_(:,n) = c{n} ;
+    z_tr(:,n) =  p + r_(n) * c{n} + chol(R)' * randn(3,1) ;
+    z_tr(:,n) = z(:,n) + chol(R)' * randn(3,1) ;
+end
+
+%------------------Estimation part---------------------------%
+
+%--Gaussian process parameters
+ro = mean(sqrt((z_tr(1,:) - p(1)).^2 + (z_tr(2,:) - p(2)).^2 + (z_tr(3,:) - p(3)).^2)) ;
+sigma_r =  0.01 ;
+sigma_f  = 2 ;
+l = 1;
+%--Gaussian process kernel
+K = @(A, B) kernel_process(A, B, sigma_f, sigma_r, 0.8) ;
+%--Angle tests
+Nbtest = 50 ; %Number of angles test
+theta_test = - pi + 2 * pi * rand(Nbtest, 1) ; %Azimuth angles
+phi_test = - pi/2 + pi * rand(Nbtest, 1) ; %Elevation angles
+Angle_test = [theta_test, phi_test] ;
+Kff = K(Angle_test, Angle_test) ;
+
+x = ro + chol(Kff)' * randn(Nbtest, 1) ;
+figure, plot(x) 
+
+%---Estimation of output of gaussian process by MC estimate
+
+J_f = [] ;
+
+for m = 1 : length(Angle_train)
+   
+    Kzf = K(Angle_train(m,:), Angle_test) * K(Angle_test, Angle_test)^-1 ;
+    %--Noise regression
+    Rf = K(Angle_train(m,:), Angle_train(m,:)) + 0.01 - K(Angle_train(m,:), Angle_test) * ...
+        K(Angle_test, Angle_test)^-1 * K(Angle_test, Angle_train(m,:));
+    R_{m} = c_(:,m) * Rf * c_(:,m)' + R * eye(3);
+    %--Jacobian computation
+    J =  c_(:,m) * Kzf ;
+    J_f = [ J_f ; J ] ;
+    
+end
+
+%--Global Jacobian ( regression matrix )
+H = [ J_f ; eye(Nbtest) ] ;
+%--Global noise covariance measurements matrix
+R_glob = blkdiag(R_{:}) ;
+%--Covariance matrix ( measurements + a priori )
+Sigma = blkdiag(R_glob, Kff) ;
+%--Concatenation of measurements with a priori
+z_glob = [z_tr(:) - repmat(p, size(z,2),1) - ro * c_(:)  ; - ro * ones(Nbtest,1)] ;
+%---Least squares estimation
+est =  - (H' * Sigma^-1 * H)^-1 * H' * Sigma^-1 * z_glob ;
+%--Predicted points
+z_pred(:,1) = p(1) + est .* cos(phi_test) .* cos(theta_test) ;
+z_pred(:,2) = p(2) + est .* cos(phi_test) .* sin(theta_test) ;
+z_pred(:,3) = p(3) + est .* sin(phi_test) ;
+
+%-------------------------Plotting results----------------------%
+figure,
+plotcube([1 1 1],[ 0  0  0],.8,[1 1 1]), hold all,...
+    plot3(z_tr(1,:),z_tr(2,:), z_tr(3,:),'o r ','LineWidth', 10) ;
+k = boundary(z_pred);
+hold on,
+l = trisurf(k, z_pred(:,1), z_pred(:,2), z_pred(:,3),'Facecolor','blue','FaceAlpha',0.1);
+view(3)
+xlabel('X-axis(m)'), ylabel('Y-axis(m)'), zlabel('Z-axis(m)')
+title('Estimation with $l= 10^{-3}, \sigma_f = 2$ and $\sigma_r = 0.1$','Interpreter','latex')
+legend(l,'Estimated shape')
+grid minor
+%%
+[phi_ord,ind_phi] = sort(phi_test) ;
+[theta_ord,ind_theta] = sort(theta_test) ;
+figure, 
+plot(phi_ord, est(ind_phi),'->'),title('Predicted radius vs elevation test ') ;
+figure,
+plot(theta_ord, est(ind_theta),'->'),title('Predicted radius vs azimuth test') ;
+grid minor
+

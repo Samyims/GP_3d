@@ -2,17 +2,17 @@ clear all
 close all;
 %%
 
-%--------------Off-line Gaussian process regression with kown centroid and
-%--------------orientation meassurements-----------------------%
+%--------------Off-line Gaussian process regression with known centroid and
+%--------------orientation measurements-----------------------%
 
 %---------------------Simulation part-------------------------%
 
 N = 10 ; %Number of points for every face of cube ( number of of measurementts : 6 * N)
 z = gen_cube(N) ; %Generation of points from cube
-p = (1/2) * ones(3,1) ; %Centroid
+p = (1/2) * ones(3,1) ; %Centroid of cube
 R = 0.0001 ; %Noise variance
 
-%-------Noisy measurements
+%-------Generation of noisy measurements
 for n = 1 : size(z,2) 
     r_(n) = sqrt((z(1,n) - p(1))^2 + (z(2,n) - p(2))^2 + (z(3,n) - p(3))^2) ;
     theta_(n) = atan2((z(2,n) - p(2)), (z(1,n) - p(1))) ; %Azimuth measurement
@@ -21,7 +21,6 @@ for n = 1 : size(z,2)
     c{n} = [ cos(phi_(n)) .* cos(theta_(n)) ; cos(phi_(n)) .* sin(theta_(n)) ; sin(phi_(n))] ;%Orientation vector
     c_(:,n) = c{n} ;
     z_tr(:,n) =  p + r_(n) * c{n} + chol(R)' * randn(3,1) ;
-    z_tr(:,n) = z(:,n) + chol(R)' * randn(3,1) ;
 end
 
 %------------------Estimation part---------------------------%

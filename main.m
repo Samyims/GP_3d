@@ -1,5 +1,9 @@
 clear all
 close all;
+
+% Load spheretri package
+addpath(genpath('spheretri'));
+
 %%
 
 %--------------Off-line Gaussian process regression with known centroid and

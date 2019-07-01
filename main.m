@@ -7,7 +7,7 @@ close all;
 
 %---------------------Simulation part-------------------------%
 
-N = 10 ; %Number of points for every face of cube ( number of of measurementts : 6 * N)
+N = 20 ; %Number of points for every face of cube ( number of of measurementts : 6 * N)
 z = gen_cube(N) ; %Generation of points from cube
 p = (1/2) * ones(3,1) ; %Centroid of cube
 R = 0.0001 ; %Noise variance
@@ -72,21 +72,22 @@ z_pred(:,3) = p(3) + est .* sin(phi_test) ;
 %-------------------------Plotting results----------------------%
 figure,
 plotcube([1 1 1],[ 0  0  0],.8,[1 1 1]), hold all,...
-    plot3(z_tr(1,:),z_tr(2,:), z_tr(3,:),'o r ','LineWidth', 10) ;
-k = boundary(z_pred);
+    plot3(z_tr(1,:),z_tr(2,:), z_tr(3,:),'o r ','LineWidth', 3) ;
 hold on,
-l = trisurf(k, z_pred(:,1), z_pred(:,2), z_pred(:,3),'Facecolor','blue','FaceAlpha',0.1);
+plot3(z_pred(:,1),z_pred(:,2), z_pred(:,3),'x k ','LineWidth', 5) ;
+k = boundary(z_pred);
+h = trisurf(k, z_pred(:,1), z_pred(:,2), z_pred(:,3),'Facecolor','blue','FaceAlpha',0.1);
 view(3)
 xlabel('X-axis(m)'), ylabel('Y-axis(m)'), zlabel('Z-axis(m)')
-title('Estimation with $l= 10^{-3}, \sigma_f = 2$ and $\sigma_r = 0.1$','Interpreter','latex')
-legend(l,'Estimated shape')
+title("Estimation with $l=\ $" + l + ", $\sigma_f =\ $" + sigma_f + "\ and $\sigma_r =\ $" + sigma_r, 'Interpreter','latex')
+legend(h,'Estimated shape')
 grid minor
 %%
-[phi_ord,ind_phi] = sort(phi_test) ;
-[theta_ord,ind_theta] = sort(theta_test) ;
-figure, 
-plot(phi_ord, est(ind_phi),'->'),title('Predicted radius vs elevation test ') ;
-figure,
-plot(theta_ord, est(ind_theta),'->'),title('Predicted radius vs azimuth test') ;
-grid minor
+% [phi_ord,ind_phi] = sort(phi_test) ;
+% [theta_ord,ind_theta] = sort(theta_test) ;
+% figure, 
+% plot(phi_ord, est(ind_phi),'->'),title('Predicted radius vs elevation test ') ;
+% figure,
+% plot(theta_ord, est(ind_theta),'->'),title('Predicted radius vs azimuth test') ;
+% grid minor
 

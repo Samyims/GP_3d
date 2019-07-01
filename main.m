@@ -27,20 +27,21 @@ end
 
 %--Gaussian process parameters
 ro = mean(sqrt((z_tr(1,:) - p(1)).^2 + (z_tr(2,:) - p(2)).^2 + (z_tr(3,:) - p(3)).^2)) ;
-sigma_r =  0.01 ;
+sigma_r =  0.1 ;
 sigma_f  = 2 ;
-l = 1;
+l = pi/4;
 %--Gaussian process kernel
-K = @(A, B) kernel_process(A, B, sigma_f, sigma_r, 0.8) ;
+K = @(A, B) kernel_process(A, B, sigma_f, sigma_r, l) ;
 %--Angle tests
-Nbtest = 50 ; %Number of angles test
-theta_test = - pi + 2 * pi * rand(Nbtest, 1) ; %Azimuth angles
-phi_test = - pi/2 + pi * rand(Nbtest, 1) ; %Elevation angles
+[basisVertices, ~] = spheretri(20);      % produces evenly spaced points on the sphere
+[theta_test, phi_test, ~] = cart2sph(basisVertices(:,1), basisVertices(:,2)...
+    , basisVertices(:,3));  % extracts corresponding spherical angles
+Nbtest = length(theta_test);
 Angle_test = [theta_test, phi_test] ;
 Kff = K(Angle_test, Angle_test) ;
 
-x = ro + chol(Kff)' * randn(Nbtest, 1) ;
-figure, plot(x) 
+% x = ro + chol(Kff)' * randn(Nbtest, 1) ;
+% figure, plot(x) 
 
 %---Estimation of output of gaussian process by MC estimate
 
@@ -59,16 +60,10 @@ for m = 1 : length(Angle_train)
     
 end
 
-%--Global Jacobian ( regression matrix )
-H = [ J_f ; eye(Nbtest) ] ;
 %--Global noise covariance measurements matrix
 R_glob = blkdiag(R_{:}) ;
-%--Covariance matrix ( measurements + a priori )
-Sigma = blkdiag(R_glob, Kff) ;
-%--Concatenation of measurements with a priori
-z_glob = [z_tr(:) - repmat(p, size(z,2),1) - ro * c_(:)  ; - ro * ones(Nbtest,1)] ;
 %---Least squares estimation
-est =  - (H' * Sigma^-1 * H)^-1 * H' * Sigma^-1 * z_glob ;
+est =  inv(inv(Kff) + J_f' * inv(R_glob) * J_f) * J_f' *  inv(R_glob)* (z_tr(:) - repmat(p, size(z,2),1));
 %--Predicted points
 z_pred(:,1) = p(1) + est .* cos(phi_test) .* cos(theta_test) ;
 z_pred(:,2) = p(2) + est .* cos(phi_test) .* sin(theta_test) ;
